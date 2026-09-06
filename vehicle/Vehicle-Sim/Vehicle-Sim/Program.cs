@@ -6,8 +6,8 @@ using Microsoft.Azure.Devices.Client;
 var deviceId = Environment.GetEnvironmentVariable("DEVICE_ID") ?? "sim-car-001";
 
 // Connection string, stored in ENV
-var connectionString = Environment.GetEnvironmentVariable("IOT_CONNECTION") ?? throw new InvalidOperationException("Missing the connection string");
-
+var connectionString = Environment.GetEnvironmentVariable("IOT_CONNECTION")
+    ?? throw new InvalidOperationException("Missing IOT_CONNECTION environment variable (device connection string)");
 // Using Device Client package to connect
 using var client = DeviceClient.CreateFromConnectionString(
     connectionString,

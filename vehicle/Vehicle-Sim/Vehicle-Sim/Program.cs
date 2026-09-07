@@ -60,11 +60,21 @@ try
     // Main loop, run while not cancelled
     while (!stop.IsCancellationRequested)
     {
+        bool chargingEnabled;
+        int scheduleRevisionApplied;
+        DateTimeOffset? chargingStartUtc;
+        lock (twinState)
+        {
+            chargingEnabled = twinState.ChargingEnabled;
+            scheduleRevisionApplied = twinState.ScheduleRevisionApplied;
+            chargingStartUtc = twinState.ChargingStartUtc;
+        }
+
         // Check if we are scheduled to start charging
         var now = DateTimeOffset.UtcNow;
-        var scheduleStarted = twinState.ChargingStartUtc is null ||
-            now >= twinState.ChargingStartUtc.Value;
-        var charging = twinState.ChargingEnabled &&
+        var scheduleStarted = chargingStartUtc is null ||
+            now >= chargingStartUtc.Value;
+        var charging = chargingEnabled &&
             scheduleStarted;
 
         // Template message JSON
@@ -75,8 +85,8 @@ try
             timestampUtc = DateTimeOffset.UtcNow,
             batteryPercentage = batteryPercent,
             isCharging = charging,
-            scheduleRevisionApplied = twinState.ScheduleRevisionApplied, // this is the version of the last revision of the twin applied
-            chargingStartUtc = twinState.ChargingStartUtc // using the latest charging start time
+            scheduleRevisionApplied, // this is the version of the last revision of the twin applied
+            chargingStartUtc // using the latest charging start time
         };
 
 
@@ -132,51 +142,57 @@ static async Task ApplyDesiredPropertiesAsync(
 
     try
     {
-        var chargingEnabled = state.ChargingEnabled;
-        var scheduleRevision = state.ScheduleRevisionApplied;
-        var chargingStartUtc = state.ChargingStartUtc;
-
-        // Set charging enabled
-        if (desiredProperties.Contains("chargingEnabled"))
+        bool chargingEnabled;
+        int scheduleRevision;
+        DateTimeOffset? chargingStartUtc;
+        lock (state)
         {
-            chargingEnabled = Convert.ToBoolean(
-                desiredProperties["chargingEnabled"]);
-        }
+            chargingEnabled = state.ChargingEnabled;
+            scheduleRevision = state.ScheduleRevisionApplied;
+            chargingStartUtc = state.ChargingStartUtc;
 
-        // Set the schedule revision number most recently applied
-        if (desiredProperties.Contains("scheduleRevision"))
-        {
-            scheduleRevision = Convert.ToInt32(
-                desiredProperties["scheduleRevision"]);
-        }
-
-        // set the charge time
-        if (desiredProperties.Contains("chargingStartUtc"))
-        {
-            var rawStart = desiredProperties["chargingStartUtc"];
-
-            if (rawStart is null)
+            // Set charging enabled
+            if (desiredProperties.Contains("chargingEnabled"))
             {
-                chargingStartUtc = null;
+                chargingEnabled = Convert.ToBoolean(
+                    desiredProperties["chargingEnabled"]);
             }
-            else if (!DateTimeOffset.TryParse(
-                Convert.ToString(rawStart, CultureInfo.InvariantCulture),
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out DateTimeOffset parsedStart))
-            {
-                throw new FormatException(
-                    "chargingStartUtc must be a valid ISO 8601 timestamp.");
-            }
-            else
-            {
-                chargingStartUtc = parsedStart;
-            }
-        }
 
-        state.ChargingEnabled = chargingEnabled;
-        state.ScheduleRevisionApplied = scheduleRevision;
-        state.ChargingStartUtc = chargingStartUtc;
+            // Set the schedule revision number most recently applied
+            if (desiredProperties.Contains("scheduleRevision"))
+            {
+                scheduleRevision = Convert.ToInt32(
+                    desiredProperties["scheduleRevision"]);
+            }
+
+            // set the charge time
+            if (desiredProperties.Contains("chargingStartUtc"))
+            {
+                var rawStart = desiredProperties["chargingStartUtc"];
+
+                if (rawStart is null)
+                {
+                    chargingStartUtc = null;
+                }
+                else if (!DateTimeOffset.TryParse(
+                    Convert.ToString(rawStart, CultureInfo.InvariantCulture),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out DateTimeOffset parsedStart))
+                {
+                    throw new FormatException(
+                        "chargingStartUtc must be a valid ISO 8601 timestamp.");
+                }
+                else
+                {
+                    chargingStartUtc = parsedStart;
+                }
+            }
+
+            state.ChargingEnabled = chargingEnabled;
+            state.ScheduleRevisionApplied = scheduleRevision;
+            state.ChargingStartUtc = chargingStartUtc;
+        }
 
         var reportedProperties = new TwinCollection();
         reportedProperties["chargingEnabled"] = chargingEnabled;

@@ -63,6 +63,7 @@ try
         bool chargingEnabled;
         int scheduleRevisionApplied;
         DateTimeOffset? chargingStartUtc;
+        // lock while modifying to make sure the ApplyDesiredPropertiesAsync doesn't cause race conditions
         lock (twinState)
         {
             chargingEnabled = twinState.ChargingEnabled;
@@ -145,6 +146,7 @@ static async Task ApplyDesiredPropertiesAsync(
         bool chargingEnabled;
         int scheduleRevision;
         DateTimeOffset? chargingStartUtc;
+        // lock state so local read won't try access half-changed states
         lock (state)
         {
             chargingEnabled = state.ChargingEnabled;

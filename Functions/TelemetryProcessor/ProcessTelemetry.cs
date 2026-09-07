@@ -29,7 +29,8 @@ public sealed class ProcessTelemetry(ILogger<ProcessTelemetry> logger)
         }
         catch (JsonException exception)
         {
-            logger.LogWarning(exception, "Ignored malformed telemetry: {Message}", message);
+            var preview = message is null ? "<null>" : message[..Math.Min(message.Length, 512)];
+            logger.LogWarning(exception, "Ignored malformed telemetry (preview): {MessagePreview}", preview);
         }
     }
 }

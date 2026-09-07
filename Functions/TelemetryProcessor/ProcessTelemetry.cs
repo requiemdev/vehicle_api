@@ -4,6 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace TelemetryProcessor;
 
+/// <summary>
+/// Class to process incoming telemetry from IoT hub
+/// </summary>
+/// <param name="logger"></param>
 public sealed class ProcessTelemetry(ILogger<ProcessTelemetry> logger)
 {
     [Function(nameof(ProcessTelemetry))]
@@ -29,7 +33,15 @@ public sealed class ProcessTelemetry(ILogger<ProcessTelemetry> logger)
         }
     }
 }
-
+/// <summary>
+/// Record to hold the telemetry data (record since fields are init-only)
+/// </summary>
+/// <param name="MessageId"> message ID from the device </param>
+/// <param name="DeviceId"> device ID from IoT Hub</param>
+/// <param name="TimestampUtc"> timestamp message was sent from, time from UTC </param>
+/// <param name="BatteryPercentage"> battery % of device </param>
+/// <param name="IsCharging"> battery charging state </param>
+/// <param name="ScheduleRevisionApplied"> has battery charging schedule been applied from the device twin </param>
 public sealed record Telemetry(
     string MessageId,
     string DeviceId,
@@ -38,6 +50,12 @@ public sealed record Telemetry(
     bool IsCharging,
     int ScheduleRevisionApplied)
 {
+    /// <summary>
+    /// Parse the serialised message and return as Telemetry record
+    /// </summary>
+    /// <param name="message"></param>
+    /// <returns></returns>
+    /// <exception cref="JsonException"></exception>
     public static Telemetry Parse(string message)
     {
         var telemetry = JsonSerializer.Deserialize<Telemetry>(message, JsonSerializerOptions.Web)
@@ -54,6 +72,10 @@ public sealed record Telemetry(
         return telemetry;
     }
 
+    /// <summary>
+    /// Method to check itself using a hard-coded JSON 
+    /// </summary>
+    /// <exception cref="InvalidOperationException"></exception>
     public static void SelfCheck()
     {
         var parsed = Parse("""{"messageId":"1","deviceId":"sim-car-001","timestampUtc":"2026-09-05T02:15:00Z","batteryPercentage":67,"isCharging":true,"scheduleRevisionApplied":0}""");

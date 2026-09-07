@@ -109,8 +109,6 @@ jobs:
     permissions:
       # Allows the job to download the repository artifact.
       contents: read
-      # Allows Azure login to request a GitHub OIDC token.
-      id-token: write
 
     steps:
       # Retrieves the exact package produced and checked by the build-test job.
@@ -120,18 +118,10 @@ jobs:
           name: function-package
           path: ${{ env.PUBLISH_DIR }}
 
-      # Authenticates to Azure without storing a long-lived publish profile.
-      # These values must exist as GitHub repository secrets.
-      - name: Login to Azure with OIDC
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      # Deploys the published package to the production slot of the Function App.
+      # Deploys with the Function App publish profile stored in GitHub secrets.
       - name: Deploy Azure Function
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           package: ${{ env.PUBLISH_DIR }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}

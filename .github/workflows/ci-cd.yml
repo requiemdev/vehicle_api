@@ -12,6 +12,8 @@ on:
     branches: [main]
     paths:
       - 'Functions/TelemetryProcessor/**'
+      - 'Tests/TelemetryProcessor.Tests/**'
+      - '.github/workflows/ci-cd.yml'
 
   # Adds a manual "Run workflow" button in GitHub Actions.
   workflow_dispatch:

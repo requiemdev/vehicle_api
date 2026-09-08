@@ -1,0 +1,134 @@
+# Display name shown in the GitHub Actions tab.
+name: Build, Test, Deploy Function App
+
+# Events that start this workflow.
+on:
+  # Run CI whenever a pull request targets main, regardless of which files changed.
+  pull_request:
+    branches: [main]
+
+  # Run on pushes to main only when the Function App files changed.
+  push:
+    branches: [main]
+    paths:
+      - 'Functions/TelemetryProcessor/**'
+      - 'Tests/TelemetryProcessor.Tests/**'
+      - '.github/workflows/ci-cd.yml'
+
+  # Adds a manual "Run workflow" button in GitHub Actions.
+  workflow_dispatch:
+
+# Values reused by the jobs below.
+env:
+  # SDK version installed on the GitHub runner.
+  DOTNET_VERSION: '10.0.x'
+  # The production Azure Functions project to publish.
+  FUNCTION_PROJECT: Functions/TelemetryProcessor/TelemetryProcessor.csproj
+  # The test project. It references and therefore builds the Function project too.
+  TEST_PROJECT: Tests/TelemetryProcessor.Tests/TelemetryProcessor.Tests.csproj
+  # Temporary folder containing the compiled deployment package.
+  PUBLISH_DIR: publish
+  # Name of the existing Azure Function App to deploy to.
+  AZURE_FUNCTIONAPP_NAME: Vehicle-Event
+
+jobs:
+  # CI job: restore dependencies, compile the code, and run tests.
+  build-test:
+    # Each job runs on a fresh Windows GitHub-hosted machine.
+    runs-on: windows-latest
+
+    permissions:
+      # Allows checkout to read the repository; no Azure permission is needed here.
+      contents: read
+
+    steps:
+      # Downloads the commit or pull-request code onto the runner.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Installs the requested .NET SDK so local and CI builds use the same major version.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Restores NuGet packages for the test project and its Function project reference.
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore "${{ env.TEST_PROJECT }}"
+
+      # Compiles the tests and the Function App in Release configuration.
+      # --no-restore reuses the packages restored in the previous step.
+      - name: Build
+        shell: pwsh
+        run: dotnet build "${{ env.TEST_PROJECT }}" --configuration Release --no-restore
+
+      # Executes the xUnit tests. The job stops here if any test fails.
+      # --no-build and --no-restore reuse the outputs from the previous steps.
+      - name: Test
+        shell: pwsh
+        run: dotnet test "${{ env.TEST_PROJECT }}" --configuration Release --no-build --no-restore
+
+      # Publish and deployment happen only after code reaches main.
+      # Pull requests run tests but never publish or deploy.
+      - name: Publish Function App
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        run: |
+          # Produces the Azure Functions deployment files in the publish folder.
+          dotnet publish "${{ env.FUNCTION_PROJECT }}" `
+            --configuration Release `
+            --no-restore `
+            --output "${{ env.PUBLISH_DIR }}"
+
+      # Prevents an incomplete or incorrectly structured package from being deployed.
+      - name: Verify deployment package
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\host.json")) {
+            throw 'host.json is missing from the publish output.'
+          }
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\functions.metadata")) {
+            throw 'functions.metadata is missing from the publish output.'
+          }
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\.azurefunctions")) {
+            throw '.azurefunctions is missing from the publish output.'
+          }
+
+      # Passes the compiled Function App from this job to the deploy job.
+      - name: Upload deployment package
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-package
+          path: ${{ env.PUBLISH_DIR }}
+          include-hidden-files: true
+
+  # CD job: deploys the package after the CI job succeeds.
+  deploy:
+    # Only pushes or manual runs from main may deploy to Azure.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # Do not deploy unless build-test completed successfully.
+    needs: build-test
+    runs-on: windows-latest
+
+    permissions:
+      # Allows the job to download the repository artifact.
+      contents: read
+
+    steps:
+      # Retrieves the exact package produced and checked by the build-test job.
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: function-package
+          path: ${{ env.PUBLISH_DIR }}
+
+      # Deploys with the Function App publish profile stored in GitHub secrets.
+      - name: Deploy Azure Function
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.PUBLISH_DIR }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}

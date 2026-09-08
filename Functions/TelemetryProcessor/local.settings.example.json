@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "IotHubEventsConnection": "<IoT Hub Event Hub-compatible connection string>",
+    "IotHubHostName": "<IoT Hub hostname, for example my-hub.azure-devices.net>",
+    "TelemetryConsumerGroup": "telemetry-logger"
+  }
+}

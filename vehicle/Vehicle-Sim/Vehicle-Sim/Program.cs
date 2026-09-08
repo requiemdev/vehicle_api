@@ -41,6 +41,12 @@ try
              ApplyDesiredPropertiesAsync(client, desiredProperties, twinState),
         null);
 
+    // direct method handler to set charging state
+    await client.SetMethodHandlerAsync(
+        "setCharging",
+        (request, _) => SetChargingAsync(request, twinState),
+        null);
+
     await client.OpenAsync(stop.Token);
 
     // read the desired state first, to get any updates while the device was offline
@@ -61,12 +67,14 @@ try
     while (!stop.IsCancellationRequested)
     {
         bool chargingScheduleEnabled;
+        bool? chargingOverride; // we want to be able to override a charging schedule
         int scheduleRevisionApplied;
         DateTimeOffset? chargingStartUtc;
         // lock while modifying to make sure the ApplyDesiredPropertiesAsync doesn't cause race conditions
         lock (twinState)
         {
             chargingScheduleEnabled = twinState.ChargingScheduleEnabled;
+            chargingOverride = twinState.ChargingOverride;
             scheduleRevisionApplied = twinState.ScheduleRevisionApplied;
             chargingStartUtc = twinState.ChargingStartUtc;
         }
@@ -75,8 +83,9 @@ try
         var now = DateTimeOffset.UtcNow;
         var scheduleStarted = chargingStartUtc is null ||
             now >= chargingStartUtc.Value;
-        var charging = chargingScheduleEnabled &&
-            scheduleStarted;
+        // use charging override otherwhise use schedule
+        var charging = chargingOverride ??
+            (chargingScheduleEnabled && scheduleStarted);
 
         // Template message JSON
         var telemetry = new
@@ -123,6 +132,39 @@ catch (OperationCanceledException) when (stop.IsCancellationRequested)
 finally
 {
     await client.CloseAsync();
+}
+
+// Direct method to handle charging
+static Task<MethodResponse> SetChargingAsync(MethodRequest request, TwinState state)
+{
+    try
+    {
+        // parse the payload
+        using var payload = JsonDocument.Parse(request.DataAsJson);
+        if (payload.RootElement.ValueKind != JsonValueKind.Object ||
+            !payload.RootElement.TryGetProperty("isCharging", out var value) ||
+            value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+        {
+            throw new JsonException("Payload must be {\"isCharging\": true|false}.");
+        }
+
+        var isCharging = value.GetBoolean();
+        lock (state)
+        {
+            state.ChargingOverride = isCharging;
+        }
+
+        Console.WriteLine($"Direct charging command applied: isCharging={isCharging}");
+        return Task.FromResult(new MethodResponse(
+            Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { isCharging })),
+            200));
+    }
+    catch (JsonException exception)
+    {
+        return Task.FromResult(new MethodResponse(
+            Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { error = exception.Message })),
+            400));
+    }
 }
 
 
@@ -194,6 +236,7 @@ static async Task ApplyDesiredPropertiesAsync(
             state.ChargingScheduleEnabled = chargingScheduleEnabled;
             state.ScheduleRevisionApplied = scheduleRevision;
             state.ChargingStartUtc = chargingStartUtc;
+            state.ChargingOverride = null;
         }
 
         var reportedProperties = new TwinCollection();
@@ -232,6 +275,8 @@ static async Task ApplyDesiredPropertiesAsync(
 sealed class TwinState
 {
     public bool ChargingScheduleEnabled { get; set; }
+
+    public bool? ChargingOverride { get; set; }
 
     public int ScheduleRevisionApplied { get; set; }
 

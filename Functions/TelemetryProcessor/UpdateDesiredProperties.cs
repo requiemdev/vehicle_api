@@ -132,22 +132,22 @@ public sealed partial class UpdateDesiredProperties(
     {
         // hashset for properties we can change
         private static readonly HashSet<string> AllowedProperties =
-            ["chargingEnabled", "chargingStartUtc"];
+            ["chargingScheduleEnabled", "chargingStartUtc"];
         
         private DesiredPropertiesPatch(
-            bool hasChargingEnabled,
-            bool chargingEnabled,
+            bool hasChargingScheduleEnabled,
+            bool chargingScheduleEnabled,
             bool hasChargingStartUtc,
             DateTimeOffset? chargingStartUtc)
         {
-            HasChargingEnabled = hasChargingEnabled;
-            ChargingEnabled = chargingEnabled;
+            HasChargingScheduleEnabled = hasChargingScheduleEnabled;
+            ChargingScheduleEnabled = chargingScheduleEnabled;
             HasChargingStartUtc = hasChargingStartUtc;
             ChargingStartUtc = chargingStartUtc;
         }
 
-        public bool HasChargingEnabled { get; }
-        public bool ChargingEnabled { get; }
+        public bool HasChargingScheduleEnabled { get; }
+        public bool ChargingScheduleEnabled { get; }
         public bool HasChargingStartUtc { get; }
         public DateTimeOffset? ChargingStartUtc { get; }
 
@@ -163,8 +163,8 @@ public sealed partial class UpdateDesiredProperties(
             }
 
             var seen = new HashSet<string>();
-            var hasChargingEnabled = false;
-            var chargingEnabled = false;
+            var hasChargingScheduleEnabled = false;
+            var chargingScheduleEnabled = false;
             var hasChargingStartUtc = false;
             DateTimeOffset? chargingStartUtc = null;
 
@@ -179,15 +179,15 @@ public sealed partial class UpdateDesiredProperties(
 
 
                 // Setting the charging state
-                if (property.Name == "chargingEnabled")
+                if (property.Name == "chargingScheduleEnabled")
                 {
                     if (property.Value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
                     {
-                        throw new JsonException("chargingEnabled must be a boolean.");
+                        throw new JsonException("chargingScheduleEnabled must be a boolean.");
                     }
 
-                    hasChargingEnabled = true;
-                    chargingEnabled = property.Value.GetBoolean();
+                    hasChargingScheduleEnabled = true;
+                    chargingScheduleEnabled = property.Value.GetBoolean();
                     continue;
                 }
 
@@ -213,15 +213,15 @@ public sealed partial class UpdateDesiredProperties(
                 chargingStartUtc = parsed.ToUniversalTime();
             }
 
-            if (!hasChargingEnabled && !hasChargingStartUtc)
+            if (!hasChargingScheduleEnabled && !hasChargingStartUtc)
             {
                 throw new JsonException("At least one desired property is required.");
             }
 
             // return the object with the parsed values
             return new DesiredPropertiesPatch(
-                hasChargingEnabled,
-                chargingEnabled,
+                hasChargingScheduleEnabled,
+                chargingScheduleEnabled,
                 hasChargingStartUtc,
                 chargingStartUtc);
         }
@@ -260,9 +260,9 @@ public sealed partial class UpdateDesiredProperties(
         public Twin ToTwinPatch(int revision)
         {
             var twin = new Twin();
-            if (HasChargingEnabled)
+            if (HasChargingScheduleEnabled)
             {
-                twin.Properties.Desired["chargingEnabled"] = ChargingEnabled;
+                twin.Properties.Desired["chargingScheduleEnabled"] = ChargingScheduleEnabled;
             }
 
             if (HasChargingStartUtc)
@@ -278,9 +278,9 @@ public sealed partial class UpdateDesiredProperties(
         public Dictionary<string, object?> ToResponse()
         {
             var response = new Dictionary<string, object?>();
-            if (HasChargingEnabled)
+            if (HasChargingScheduleEnabled)
             {
-                response["chargingEnabled"] = ChargingEnabled;
+                response["chargingScheduleEnabled"] = ChargingScheduleEnabled;
             }
 
             if (HasChargingStartUtc)

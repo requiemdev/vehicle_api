@@ -60,13 +60,13 @@ try
     // Main loop, run while not cancelled
     while (!stop.IsCancellationRequested)
     {
-        bool chargingEnabled;
+        bool chargingScheduleEnabled;
         int scheduleRevisionApplied;
         DateTimeOffset? chargingStartUtc;
         // lock while modifying to make sure the ApplyDesiredPropertiesAsync doesn't cause race conditions
         lock (twinState)
         {
-            chargingEnabled = twinState.ChargingEnabled;
+            chargingScheduleEnabled = twinState.ChargingScheduleEnabled;
             scheduleRevisionApplied = twinState.ScheduleRevisionApplied;
             chargingStartUtc = twinState.ChargingStartUtc;
         }
@@ -75,7 +75,7 @@ try
         var now = DateTimeOffset.UtcNow;
         var scheduleStarted = chargingStartUtc is null ||
             now >= chargingStartUtc.Value;
-        var charging = chargingEnabled &&
+        var charging = chargingScheduleEnabled &&
             scheduleStarted;
 
         // Template message JSON
@@ -134,7 +134,7 @@ static async Task ApplyDesiredPropertiesAsync(
 {
 
     // guard clause for desired properties missing properties 
-    if (!desiredProperties.Contains("chargingEnabled") &&
+    if (!desiredProperties.Contains("chargingScheduleEnabled") &&
         !desiredProperties.Contains("scheduleRevision") &&
         !desiredProperties.Contains("chargingStartUtc"))
     {
@@ -143,21 +143,21 @@ static async Task ApplyDesiredPropertiesAsync(
 
     try
     {
-        bool chargingEnabled;
+        bool chargingScheduleEnabled;
         int scheduleRevision;
         DateTimeOffset? chargingStartUtc;
         // lock state so local read won't try access half-changed states
         lock (state)
         {
-            chargingEnabled = state.ChargingEnabled;
+            chargingScheduleEnabled = state.ChargingScheduleEnabled;
             scheduleRevision = state.ScheduleRevisionApplied;
             chargingStartUtc = state.ChargingStartUtc;
 
             // Set charging enabled
-            if (desiredProperties.Contains("chargingEnabled"))
+            if (desiredProperties.Contains("chargingScheduleEnabled"))
             {
-                chargingEnabled = Convert.ToBoolean(
-                    desiredProperties["chargingEnabled"]);
+                chargingScheduleEnabled = Convert.ToBoolean(
+                    desiredProperties["chargingScheduleEnabled"]);
             }
 
             // Set the schedule revision number most recently applied
@@ -191,13 +191,13 @@ static async Task ApplyDesiredPropertiesAsync(
                 }
             }
 
-            state.ChargingEnabled = chargingEnabled;
+            state.ChargingScheduleEnabled = chargingScheduleEnabled;
             state.ScheduleRevisionApplied = scheduleRevision;
             state.ChargingStartUtc = chargingStartUtc;
         }
 
         var reportedProperties = new TwinCollection();
-        reportedProperties["chargingEnabled"] = chargingEnabled;
+        reportedProperties["chargingScheduleEnabled"] = chargingScheduleEnabled;
         reportedProperties["scheduleRevision"] = scheduleRevision;
         reportedProperties["chargingStartUtc"] = chargingStartUtc?
             .ToUniversalTime()
@@ -210,7 +210,7 @@ static async Task ApplyDesiredPropertiesAsync(
         await client.UpdateReportedPropertiesAsync(reportedProperties);
 
         Console.WriteLine(
-            $"Applied twin config: enabled={chargingEnabled}, " +
+            $"Applied twin config: enabled={chargingScheduleEnabled}, " +
             $"start={chargingStartUtc?.ToUniversalTime():O}, " +
             $"revision={scheduleRevision}");
     }
@@ -231,7 +231,7 @@ static async Task ApplyDesiredPropertiesAsync(
 // Twin state of the device
 sealed class TwinState
 {
-    public bool ChargingEnabled { get; set; }
+    public bool ChargingScheduleEnabled { get; set; }
 
     public int ScheduleRevisionApplied { get; set; }
 

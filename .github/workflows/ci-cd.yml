@@ -89,6 +89,12 @@ jobs:
           if (-not (Test-Path "${{ env.PUBLISH_DIR }}\host.json")) {
             throw 'host.json is missing from the publish output.'
           }
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\functions.metadata")) {
+            throw 'functions.metadata is missing from the publish output.'
+          }
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\.azurefunctions")) {
+            throw '.azurefunctions is missing from the publish output.'
+          }
 
       # Passes the compiled Function App from this job to the deploy job.
       - name: Upload deployment package
@@ -97,6 +103,7 @@ jobs:
         with:
           name: function-package
           path: ${{ env.PUBLISH_DIR }}
+          include-hidden-files: true
 
   # CD job: deploys the package after the CI job succeeds.
   deploy:

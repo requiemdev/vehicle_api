@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vehicle Charging</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+    <main>
+        <h1>Vehicle charging</h1>
+
+        <section id="user-section" aria-labelledby="user-heading">
+            <h2 id="user-heading">Choose a user</h2>
+            <div id="user-options" class="options"></div>
+        </section>
+
+        <section id="vehicle-section" aria-labelledby="vehicle-heading" hidden>
+            <h2 id="vehicle-heading">Choose a vehicle</h2>
+            <div id="vehicle-options" class="options"></div>
+            <button id="change-user" type="button">Change user</button>
+        </section>
+
+        <section id="dashboard-section" aria-labelledby="vehicle-name" hidden>
+            <h2 id="vehicle-name">Vehicle</h2>
+
+            <div class="field">
+                <label for="battery-level">Battery</label>
+                <progress id="battery-level" max="100" value="0"></progress>
+                <span id="battery-text">No recent data.</span>
+            </div>
+
+            <p id="charging-state">Charging state unavailable.</p>
+            <p id="telemetry-time">No recent data.</p>
+            <button id="charging-button" type="button" disabled>Start charging</button>
+
+            <form id="schedule-form">
+                <h3>Charging schedule</h3>
+                <label class="checkbox-label">
+                    <input id="schedule-enabled" type="checkbox">
+                    Enable schedule
+                </label>
+                <div class="field">
+                    <label for="schedule-time">Start time</label>
+                    <input id="schedule-time" type="datetime-local" disabled>
+                </div>
+                <button id="save-schedule" type="submit">Save schedule</button>
+                <p id="schedule-status">Schedule status unavailable.</p>
+            </form>
+
+            <div class="actions">
+                <button id="change-vehicle" type="button">Change vehicle</button>
+                <button id="dashboard-change-user" type="button">Change user</button>
+            </div>
+        </section>
+
+        <p id="status" role="status" aria-live="polite"></p>
+    </main>
+</body>
+</html>

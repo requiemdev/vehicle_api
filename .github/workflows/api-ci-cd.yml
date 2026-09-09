@@ -1,0 +1,90 @@
+name: Build, Test, Deploy API
+
+on:
+  pull_request:
+    branches: [main]
+
+  push:
+    branches: [main]
+    paths:
+      - 'API/Backend_API/**'
+      - '.github/workflows/api-ci-cd.yml'
+
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  API_PROJECT: API/Backend_API/Backend_API/Backend_API.csproj
+  PUBLISH_DIR: publish-api
+  # Create this as a GitHub repository variable.
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore "${{ env.API_PROJECT }}"
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build "${{ env.API_PROJECT }}" --configuration Release --no-restore
+
+      - name: Publish API
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        run: |
+          dotnet publish "${{ env.API_PROJECT }}" `
+            --configuration Release `
+            --no-restore `
+            --output "${{ env.PUBLISH_DIR }}"
+
+      - name: Verify deployment package
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\Backend_API.dll")) {
+            throw 'Backend_API.dll is missing from the publish output.'
+          }
+
+      - name: Upload deployment package
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-package
+          path: ${{ env.PUBLISH_DIR }}
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build-test
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: api-package
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Deploy Azure Web App
+        uses: Azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: ${{ env.PUBLISH_DIR }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}

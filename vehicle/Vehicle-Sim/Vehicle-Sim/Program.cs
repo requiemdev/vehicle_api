@@ -113,6 +113,14 @@ try
 
         await client.SendEventAsync(message, stop.Token);
 
+        var reportedState = new TwinCollection();
+        reportedState["batteryPercentage"] = telemetry.batteryPercentage;
+        reportedState["isCharging"] = telemetry.isCharging;
+        reportedState["telemetryTimestampUtc"] = telemetry.timestampUtc
+            .ToUniversalTime()
+            .ToString("O", CultureInfo.InvariantCulture);
+        await client.UpdateReportedPropertiesAsync(reportedState);
+
         Console.WriteLine($"Sent: {json}");
 
         // Simulate the increase/descrease of battery
@@ -183,8 +191,15 @@ static async Task ApplyDesiredPropertiesAsync(
         return;
     }
 
+    int? configRevision = null;
+
     try
     {
+        if (desiredProperties.Contains("scheduleRevision"))
+        {
+            configRevision = Convert.ToInt32(desiredProperties["scheduleRevision"]);
+        }
+
         bool chargingScheduleEnabled;
         int scheduleRevision;
         DateTimeOffset? chargingStartUtc;
@@ -205,9 +220,10 @@ static async Task ApplyDesiredPropertiesAsync(
             // Set the schedule revision number most recently applied
             if (desiredProperties.Contains("scheduleRevision"))
             {
-                scheduleRevision = Convert.ToInt32(
-                    desiredProperties["scheduleRevision"]);
+                scheduleRevision = configRevision!.Value;
             }
+
+            configRevision ??= scheduleRevision;
 
             // set the charge time
             if (desiredProperties.Contains("chargingStartUtc"))
@@ -242,6 +258,7 @@ static async Task ApplyDesiredPropertiesAsync(
         var reportedProperties = new TwinCollection();
         reportedProperties["chargingScheduleEnabled"] = chargingScheduleEnabled;
         reportedProperties["scheduleRevision"] = scheduleRevision;
+        reportedProperties["configRevision"] = scheduleRevision;
         reportedProperties["chargingStartUtc"] = chargingStartUtc?
             .ToUniversalTime()
             .ToString("O", CultureInfo.InvariantCulture);
@@ -262,8 +279,10 @@ static async Task ApplyDesiredPropertiesAsync(
         OverflowException)
     {
         var reportedProperties = new TwinCollection();
+        reportedProperties["configRevision"] = configRevision;
         reportedProperties["configStatus"] = "rejected";
         reportedProperties["configError"] = exception.Message;
+        reportedProperties["lastConfigUpdateUtc"] = DateTime.UtcNow;
 
         await client.UpdateReportedPropertiesAsync(reportedProperties);
 

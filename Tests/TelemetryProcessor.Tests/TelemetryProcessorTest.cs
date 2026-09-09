@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using Microsoft.Azure.Devices.Shared;
 using TelemetryProcessor;
 
 namespace TelemetryProcessor.Tests;
@@ -91,4 +92,61 @@ public sealed class TelemetryProcessorTest
 
     
 
+}
+
+public sealed class GetDeviceStateTest
+{
+    [Fact]
+    public void Project_returns_valid_state()
+    {
+        var twin = Twin();
+
+        var result = GetDeviceState.Project("sim-car-001", twin);
+
+        Assert.Equal("sim-car-001", result.DeviceId);
+        Assert.Equal(67, result.BatteryPercentage);
+        Assert.True(result.IsCharging);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-09T02:15:00Z"), result.TelemetryTimestampUtc);
+        Assert.True(result.ScheduleEnabled);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-09T08:00:00Z"), result.ChargingStartUtc);
+        Assert.Equal("applied", result.ScheduleStatus);
+        Assert.Null(result.ScheduleError);
+    }
+
+    [Theory]
+    [InlineData(4, 4, "applied", "applied")]
+    [InlineData(4, 3, "rejected", "pending")]
+    [InlineData(4, 4, "rejected", "rejected")]
+    public void Project_derives_revision_correlated_schedule_status(
+        int desiredRevision,
+        int configRevision,
+        string configStatus,
+        string expected)
+    {
+        var twin = Twin(desiredRevision, configRevision, configStatus);
+        twin.Properties.Reported["configError"] = "bad schedule";
+
+        var result = GetDeviceState.Project("car", twin);
+
+        Assert.Equal(expected, result.ScheduleStatus);
+        Assert.Equal(expected == "rejected" ? "bad schedule" : null, result.ScheduleError);
+    }
+
+    private static Twin Twin(
+        int desiredRevision = 3,
+        int configRevision = 3,
+        string configStatus = "applied")
+    {
+        var twin = new Twin();
+        twin.Properties.Desired["scheduleRevision"] = desiredRevision;
+        twin.Properties.Desired["chargingScheduleEnabled"] = true;
+        twin.Properties.Desired["chargingStartUtc"] = "2026-09-09T08:00:00Z";
+        twin.Properties.Reported["configRevision"] = configRevision;
+        twin.Properties.Reported["configStatus"] = configStatus;
+        twin.Properties.Reported["batteryPercentage"] = 67;
+        twin.Properties.Reported["isCharging"] = true;
+        twin.Properties.Reported["telemetryTimestampUtc"] = "2026-09-09T02:15:00Z";
+
+        return twin;
+    }
 }

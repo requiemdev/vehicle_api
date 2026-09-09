@@ -41,6 +41,56 @@ public sealed class VehicleController(
         return Ok(vehicles);
     }
 
+    // method to report the state of a device
+    [HttpGet("{deviceId}/state")]
+    public async Task<IActionResult> GetVehicleState(
+        string deviceId, CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+
+        if (string.IsNullOrWhiteSpace(deviceId))
+        {
+            return BadRequest(new { error = "deviceId is required." });
+        }
+
+        if (!await OwnsVehicleAsync(deviceId, cancellationToken))
+        {
+            return VehicleAccessDenied();
+        }
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"devices/{Uri.EscapeDataString(deviceId)}/state");
+
+        var functionKey = configuration["TelemetryProcessor:FunctionKeys:GetDeviceState"];
+        if (!string.IsNullOrWhiteSpace(functionKey))
+        {
+            request.Headers.Add("x-functions-key", functionKey);
+        }
+
+        try
+        {
+            using var response = await httpClientFactory
+                .CreateClient("TelemetryProcessor")
+                .SendAsync(request, cancellationToken);
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            return new ContentResult
+            {
+                StatusCode = (int)response.StatusCode,
+                Content = body,
+                ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/json"
+            };
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { error = "The vehicle state function could not be reached." });
+        }
+    }
+
     [HttpPatch("{deviceId}/charging-schedule")]
     public async Task<IActionResult> SetChargingSchedule(
         string deviceId, ChargingScheduleInput input, CancellationToken cancellationToken)

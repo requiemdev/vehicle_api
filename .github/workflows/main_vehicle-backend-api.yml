@@ -1,65 +1,90 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+# Build and deploy the ASP.NET Core API to Azure App Service.
 
-name: Build and deploy ASP.Net Core app to Azure Web App - vehicle-backend-api
+name: Build and deploy API to Azure Web App
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'API/Backend_API/**'
+      - '.github/workflows/main_vehicle-backend-api.yml'
   workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  API_PROJECT: API/Backend_API/Backend_API/Backend_API.csproj
+  PUBLISH_DIR: publish-api
+  AZURE_WEBAPP_NAME: vehicle-backend-api
 
 jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore "${{ env.API_PROJECT }}"
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      - name: Build
+        shell: pwsh
+        run: dotnet build "${{ env.API_PROJECT }}" --configuration Release --no-restore
 
-      - name: Upload artifact for deployment job
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish "${{ env.API_PROJECT }}" `
+            --configuration Release `
+            --no-restore `
+            --output "${{ env.PUBLISH_DIR }}"
+
+      - name: Verify deployment package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${{ env.PUBLISH_DIR }}\Backend_API.dll")) {
+            throw 'Backend_API.dll is missing from the publish output.'
+          }
+
+      - name: Upload deployment package
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: api-package
+          path: ${{ env.PUBLISH_DIR }}
 
   deploy:
     runs-on: windows-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download deployment package
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
-      
-      - name: Login to Azure
+          name: api-package
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Login to Azure with OIDC
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_594F48C2AA534EED88FE0B7E8F166A93 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7882ECEE29E04A4587899802BD9414C9 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_52AF4169D19F46AD80AAA31932EEAF26 }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+      - name: Deploy Azure Web App
+        uses: Azure/webapps-deploy@v3
         with:
-          app-name: 'vehicle-backend-api'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: Production
+          package: ${{ env.PUBLISH_DIR }}

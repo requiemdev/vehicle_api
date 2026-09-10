@@ -44,7 +44,7 @@ builder.Services
     })
     .AddScheme<AuthenticationSchemeOptions, UserIdAuthenticationHandler>(
         UserIdAuthenticationHandler.SchemeName,
-        _ => { })
+        _ => { });
 
 builder.Services.AddAuthorization();
 

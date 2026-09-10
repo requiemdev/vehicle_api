@@ -12,6 +12,7 @@ public class VehicleDbContext : DbContext
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<Vehicle> Vehicles { get; set; } = null!;
 
+    // define Vehicle relations
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Vehicle>()

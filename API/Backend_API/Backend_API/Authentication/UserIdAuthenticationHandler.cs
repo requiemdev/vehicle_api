@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Backend_API.Authentication;
-
 public sealed class UserIdAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
@@ -20,6 +19,7 @@ public sealed class UserIdAuthenticationHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        // guard clause for invalid headers
         if (!Request.Headers.TryGetValue(HeaderName, out var values))
         {
             return AuthenticateResult.NoResult();
@@ -32,6 +32,7 @@ public sealed class UserIdAuthenticationHandler(
             return AuthenticateResult.Fail($"{HeaderName} must contain one positive integer.");
         }
 
+        //refactor into repo
         var user = await dbContext.Users
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.Id == userId, Context.RequestAborted);
@@ -41,6 +42,7 @@ public sealed class UserIdAuthenticationHandler(
             return AuthenticateResult.Fail("Unknown user.");
         }
 
+        // create claims identity and ticket
         var identity = new ClaimsIdentity(
         [
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),

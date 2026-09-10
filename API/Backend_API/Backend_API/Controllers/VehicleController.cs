@@ -25,7 +25,7 @@ public sealed class VehicleController(
         {
             return VehicleAccessDenied();
         }
-
+        // refactor into repo
         var vehicles = await dbContext.Vehicles
             .AsNoTracking()
             .Where(vehicle => vehicle.OwnerId == userId)
@@ -91,6 +91,7 @@ public sealed class VehicleController(
         }
     }
 
+    // patch the charging schedule
     [HttpPatch("{deviceId}/charging-schedule")]
     public async Task<IActionResult> SetChargingSchedule(
         string deviceId, ChargingScheduleInput input, CancellationToken cancellationToken)
@@ -160,6 +161,7 @@ public sealed class VehicleController(
         }
     }
 
+    // replace the charging status 
     [HttpPut("{deviceId}/charging")]
     public async Task<IActionResult> SetCharging(
         string deviceId,
@@ -220,6 +222,7 @@ public sealed class VehicleController(
         }
     }
 
+    // Check the vehicle, can be refactored into repo
     private async Task<bool> OwnsVehicleAsync(
         string deviceId, CancellationToken cancellationToken)
     {
@@ -235,6 +238,7 @@ public sealed class VehicleController(
                 cancellationToken);
     }
 
+    // Retrieve user ID from the Claims assigned to user
     private bool TryGetUserId(out int userId)
     {
         return int.TryParse(

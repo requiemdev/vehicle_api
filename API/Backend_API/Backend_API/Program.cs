@@ -12,8 +12,10 @@ var connectionString = builder.Configuration.GetConnectionString("VehicleDatabas
 // Add services to the container.
 builder.Services.AddDbContext<VehicleDbContext>(options =>
     options.UseSqlServer(connectionString));
-
+// Register Controllers
 builder.Services.AddControllers();
+
+// Add a local HTTP client set to the baseurl of our function
 builder.Services.AddHttpClient("TelemetryProcessor", client =>
 {
     var baseUrl = builder.Configuration["TelemetryProcessor:BaseUrl"];
@@ -26,10 +28,14 @@ builder.Services.AddHttpClient("TelemetryProcessor", client =>
 
     client.BaseAddress = new Uri(baseUri.AbsoluteUri.TrimEnd('/') + "/");
 });
+
+// Add Swagger for local API testing
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SupportNonNullableReferenceTypes();
+    c.SupportNonNullableReferenceTypes(); // support nullable types like string?
 });
+
+// Register authentication handler
 builder.Services
     .AddAuthentication(options =>
     {
@@ -38,7 +44,8 @@ builder.Services
     })
     .AddScheme<AuthenticationSchemeOptions, UserIdAuthenticationHandler>(
         UserIdAuthenticationHandler.SchemeName,
-        _ => { });
+        _ => { })
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -49,7 +56,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+// Configure middleware
 app.UseHttpsRedirection();
 
 app.UseDefaultFiles();

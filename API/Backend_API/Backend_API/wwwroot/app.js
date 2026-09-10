@@ -21,9 +21,13 @@ const elements = {
     userOptions: document.querySelector("#user-options"),
     vehicleSection: document.querySelector("#vehicle-section"),
     vehicleOptions: document.querySelector("#vehicle-options"),
+    vehicleUserAvatar: document.querySelector("#vehicle-user-avatar"),
+    vehicleUserName: document.querySelector("#vehicle-user-name"),
     dashboardSection: document.querySelector("#dashboard-section"),
+    dashboardUserName: document.querySelector("#dashboard-user-name"),
     vehicleName: document.querySelector("#vehicle-name"),
     batteryLevel: document.querySelector("#battery-level"),
+    batteryArc: document.querySelector("#battery-arc"),
     batteryText: document.querySelector("#battery-text"),
     chargingState: document.querySelector("#charging-state"),
     telemetryTime: document.querySelector("#telemetry-time"),
@@ -73,22 +77,88 @@ function setStatus(message) {
     elements.status.textContent = message;
 }
 
-function showSection(section) {
-    elements.userSection.hidden = section !== "users";
-    elements.vehicleSection.hidden = section !== "vehicles";
-    elements.dashboardSection.hidden = section !== "dashboard";
+function showSection(section, direction) {
+    const sections = {
+        users: elements.userSection,
+        vehicles: elements.vehicleSection,
+        dashboard: elements.dashboardSection
+    };
+    const update = () => {
+        for (const [name, element] of Object.entries(sections)) {
+            element.hidden = name !== section;
+        }
+        sections[section].querySelector(".status-slot")?.append(elements.status);
+        if (direction) {
+            document.getElementById(sections[section].getAttribute("aria-labelledby"))
+                ?.focus({ preventScroll: true });
+        }
+    };
+
+    if (!direction || typeof document.startViewTransition !== "function") {
+        update();
+        return;
+    }
+
+    document.documentElement.dataset.navigationDirection = direction;
+    document.startViewTransition(update);
 }
 
-function createOptionButton(label, onClick) {
+function displayName(value, fallback) {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function userInitials(name) {
+    return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
+}
+
+function createUserButton(user) {
+    const name = displayName(user.displayName, "User");
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = label;
-    button.addEventListener("click", onClick);
+    button.className = "option-button user-option";
+
+    const avatar = document.createElement("span");
+    avatar.className = "option-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = userInitials(name);
+
+    const label = document.createElement("span");
+    label.className = "option-name";
+    label.textContent = name;
+    button.append(avatar, label);
+    button.addEventListener("click", () => selectUser(user));
     return button;
 }
 
-async function loadUsers() {
-    showSection("users");
+function createVehicleButton(vehicle) {
+    const name = displayName(vehicle.displayName, "Vehicle");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "option-button vehicle-option";
+
+    const image = document.createElement("img");
+    image.className = "vehicle-option-image";
+    image.src = "/vehicle.svg";
+    image.alt = "";
+    image.setAttribute("aria-hidden", "true");
+
+    const label = document.createElement("span");
+    label.className = "option-name";
+    label.textContent = name;
+    button.append(image, label);
+    button.addEventListener("click", () => selectVehicle(vehicle));
+    return button;
+}
+
+function renderSelectedUser() {
+    const name = displayName(state.user?.displayName, "User");
+    elements.vehicleUserAvatar.textContent = userInitials(name);
+    elements.vehicleUserName.textContent = name;
+    elements.dashboardUserName.textContent = name;
+}
+
+async function loadUsers(direction) {
+    showSection("users", direction);
     elements.userOptions.replaceChildren();
     setStatus("Loading users...");
 
@@ -101,9 +171,7 @@ async function loadUsers() {
         }
 
         for (const user of users) {
-            elements.userOptions.append(
-                createOptionButton(user.displayName, () => selectUser(user))
-            );
+            elements.userOptions.append(createUserButton(user));
         }
 
         setStatus("Choose a user.");
@@ -118,11 +186,12 @@ async function selectUser(user) {
     state.vehicle = null;
     state.snapshot = null;
     state.refreshFailed = false;
-    await loadVehicles();
+    await loadVehicles("forward");
 }
 
-async function loadVehicles() {
-    showSection("vehicles");
+async function loadVehicles(direction) {
+    renderSelectedUser();
+    showSection("vehicles", direction);
     elements.vehicleOptions.replaceChildren();
     setStatus("Loading vehicles...");
 
@@ -135,9 +204,7 @@ async function loadVehicles() {
         }
 
         for (const vehicle of vehicles) {
-            elements.vehicleOptions.append(
-                createOptionButton(vehicle.displayName, () => selectVehicle(vehicle))
-            );
+            elements.vehicleOptions.append(createVehicleButton(vehicle));
         }
 
         setStatus("Choose a vehicle.");
@@ -152,8 +219,9 @@ function selectVehicle(vehicle) {
     state.snapshot = null;
     state.refreshFailed = false;
     state.scheduleDirty = false;
-    elements.vehicleName.textContent = vehicle.displayName;
-    showSection("dashboard");
+    elements.vehicleName.textContent = displayName(vehicle.displayName, "Vehicle");
+    renderSelectedUser();
+    showSection("dashboard", "forward");
     renderSnapshot();
     setStatus("Loading vehicle state...");
     refreshVehicleState(true);
@@ -266,23 +334,32 @@ function renderSnapshot() {
     const timestamp = telemetryDate(snapshot?.telemetryTimestampUtc);
     const telemetryFresh = timestamp && Date.now() - timestamp.getTime() <= STALE_AFTER_MS;
 
+    const batteryValue = batteryKnown ? snapshot.batteryPercentage : 0;
+    const batteryState = !batteryKnown
+        ? "unavailable"
+        : batteryValue > 50 ? "high" : batteryValue >= 20 ? "medium" : "low";
+    elements.batteryLevel.style.setProperty("--battery-value", batteryValue);
+    elements.batteryLevel.dataset.level = batteryState;
+    elements.batteryArc.style.strokeDashoffset = String(100 - batteryValue);
     if (batteryKnown) {
-        elements.batteryLevel.value = snapshot.batteryPercentage;
+        elements.batteryLevel.setAttribute("aria-valuenow", String(batteryValue));
+        elements.batteryLevel.setAttribute("aria-valuetext", `${batteryValue}% battery`);
     } else {
-        elements.batteryLevel.removeAttribute("value");
+        elements.batteryLevel.removeAttribute("aria-valuenow");
+        elements.batteryLevel.setAttribute("aria-valuetext", "Battery level unavailable");
     }
     elements.batteryText.textContent = batteryKnown
-        ? `${snapshot.batteryPercentage}%`
-        : "No recent data.";
+        ? `${batteryValue}%`
+        : "—";
     elements.chargingState.textContent = chargingKnown
         ? snapshot.isCharging ? "Charging." : "Not charging."
         : "Charging state unavailable.";
     elements.telemetryTime.textContent = telemetryFresh
         ? `Last update: ${timestamp.toLocaleString()}`
         : "No recent data.";
-    elements.chargingButton.textContent = chargingKnown && snapshot.isCharging
-        ? "Stop charging"
-        : "Start charging";
+    elements.chargingButton.textContent = state.commandPending
+        ? snapshot.isCharging ? "Stopping charging…" : "Starting charging…"
+        : chargingKnown && snapshot.isCharging ? "Stop charging" : "Start charging";
     elements.chargingButton.disabled = !chargingKnown || state.commandPending;
 
     if (!snapshot) {
@@ -293,16 +370,22 @@ function renderSnapshot() {
         elements.scheduleTime.value = toLocalTimeValue(snapshot.chargingStartUtc);
     }
 
-    elements.scheduleTime.disabled = !elements.scheduleEnabled.checked || state.schedulePending;
+    elements.scheduleTime.disabled = !snapshot || !elements.scheduleEnabled.checked || state.schedulePending;
     elements.scheduleTime.required = elements.scheduleEnabled.checked;
-    elements.scheduleEnabled.disabled = state.schedulePending;
-    elements.saveSchedule.disabled = state.schedulePending;
+    elements.scheduleEnabled.disabled = !snapshot || state.schedulePending;
+    elements.saveSchedule.disabled = !snapshot || state.schedulePending;
+    elements.saveSchedule.textContent = state.schedulePending
+        ? "Saving…"
+        : state.scheduleDirty ? "Save changes" : "Save schedule";
 
     if (!snapshot?.scheduleStatus) {
+        elements.scheduleStatus.dataset.state = "unavailable";
         elements.scheduleStatus.textContent = "Schedule status unavailable.";
     } else if (snapshot.scheduleStatus === "rejected" && snapshot.scheduleError) {
+        elements.scheduleStatus.dataset.state = "rejected";
         elements.scheduleStatus.textContent = `Schedule rejected: ${snapshot.scheduleError}`;
     } else {
+        elements.scheduleStatus.dataset.state = snapshot.scheduleStatus;
         elements.scheduleStatus.textContent = `Schedule: ${snapshot.scheduleStatus}.`;
     }
 }
@@ -396,7 +479,7 @@ function showUserPicker() {
     state.user = null;
     state.vehicle = null;
     state.snapshot = null;
-    loadUsers();
+    loadUsers("backward");
 }
 
 function showVehiclePicker() {
@@ -404,18 +487,18 @@ function showVehiclePicker() {
     state.vehicle = null;
     state.snapshot = null;
     state.scheduleDirty = false;
-    loadVehicles();
+    loadVehicles("backward");
 }
 
 elements.chargingButton.addEventListener("click", setCharging);
 elements.scheduleForm.addEventListener("submit", saveSchedule);
 elements.scheduleEnabled.addEventListener("change", () => {
     state.scheduleDirty = true;
-    elements.scheduleTime.disabled = !elements.scheduleEnabled.checked;
-    elements.scheduleTime.required = elements.scheduleEnabled.checked;
+    renderSnapshot();
 });
 elements.scheduleTime.addEventListener("input", () => {
     state.scheduleDirty = true;
+    renderSnapshot();
 });
 elements.changeUser.addEventListener("click", showUserPicker);
 elements.dashboardChangeUser.addEventListener("click", showUserPicker);

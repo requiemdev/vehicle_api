@@ -2,7 +2,7 @@
 
 const POLL_DELAY_MS = 15_000;
 const STALE_AFTER_MS = 45_000;
-
+// local user state
 const state = {
     user: null,
     vehicle: null,
@@ -16,6 +16,7 @@ const state = {
     scheduleDirty: false
 };
 
+// map elements to variables
 const elements = {
     userSection: document.querySelector("#user-section"),
     userOptions: document.querySelector("#user-options"),
@@ -44,13 +45,14 @@ const elements = {
     status: document.querySelector("#status")
 };
 
+// call the backend api 
 async function api(path, options = {}) {
     const headers = new Headers(options.headers);
-
+    // add the user Id as a header for basic auth
     if (state.user) {
         headers.set("X-User-Id", String(state.user.id));
     }
-
+    
     if (options.body !== undefined) {
         headers.set("Content-Type", "application/json");
     }
@@ -74,44 +76,42 @@ async function api(path, options = {}) {
     return body;
 }
 
+// set the status element message
 function setStatus(message) {
     elements.status.textContent = message;
 }
 
-function showSection(section, direction) {
+
+// show the next "page", make each sections elements visible
+function showSection(section) {
     const sections = {
         users: elements.userSection,
         vehicles: elements.vehicleSection,
         dashboard: elements.dashboardSection
     };
+
+    // update the sections, and move the status element to that slot if required
     const update = () => {
         for (const [name, element] of Object.entries(sections)) {
             element.hidden = name !== section;
         }
         sections[section].querySelector(".status-slot")?.append(elements.status);
-        if (direction) {
-            document.getElementById(sections[section].getAttribute("aria-labelledby"))
-                ?.focus({ preventScroll: true });
-        }
     };
 
-    if (!direction || typeof document.startViewTransition !== "function") {
-        update();
-        return;
-    }
-
-    document.documentElement.dataset.navigationDirection = direction;
-    document.startViewTransition(update);
+    update();
 }
 
+// name fallback
 function displayName(value, fallback) {
     return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+// user initial generator
 function userInitials(name) {
     return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
 }
 
+// function to create the user button on load
 function createUserButton(user) {
     const name = displayName(user.displayName, "User");
     const button = document.createElement("button");
@@ -131,6 +131,7 @@ function createUserButton(user) {
     return button;
 }
 
+// function to create the vehicle buttons on user select
 function createVehicleButton(vehicle) {
     const name = displayName(vehicle.displayName, "Vehicle");
     const button = document.createElement("button");
@@ -151,6 +152,7 @@ function createVehicleButton(vehicle) {
     return button;
 }
 
+// render the elements related to the user
 function renderSelectedUser() {
     const name = displayName(state.user?.displayName, "User");
     elements.vehicleUserAvatar.textContent = userInitials(name);
@@ -158,8 +160,10 @@ function renderSelectedUser() {
     elements.dashboardUserName.textContent = name;
 }
 
-async function loadUsers(direction) {
-    showSection("users", direction);
+
+// grab the users, create the buttons and add them to the userOptions element
+async function loadUsers() {
+    showSection("users");
     elements.userOptions.replaceChildren();
     setStatus("Loading users...");
 
@@ -181,21 +185,24 @@ async function loadUsers(direction) {
     }
 }
 
+// user has been clicked, set the states, reset the vehicle states, load vehicles
 async function selectUser(user) {
     stopPolling();
     state.user = user;
     state.vehicle = null;
     state.snapshot = null;
     state.refreshFailed = false;
-    await loadVehicles("forward");
+    await loadVehicles();
 }
 
-async function loadVehicles(direction) {
+// Load the vehicle page 
+async function loadVehicles() {
     renderSelectedUser();
-    showSection("vehicles", direction);
+    showSection("vehicles");
     elements.vehicleOptions.replaceChildren();
     setStatus("Loading vehicles...");
 
+    // fetch the vehicles, create elements and add buttons
     try {
         const vehicles = await api("/vehicles");
 
@@ -214,6 +221,7 @@ async function loadVehicles(direction) {
     }
 }
 
+// on user selecting a vehicle
 function selectVehicle(vehicle) {
     stopPolling();
     state.vehicle = vehicle;
@@ -222,12 +230,14 @@ function selectVehicle(vehicle) {
     state.scheduleDirty = false;
     elements.vehicleName.textContent = displayName(vehicle.displayName, "Vehicle");
     renderSelectedUser();
-    showSection("dashboard", "forward");
+    // load the dashboard view
+    showSection("dashboard");
     renderSnapshot();
     setStatus("Loading vehicle state...");
     refreshVehicleState(true);
 }
 
+// stop polling the state of the device
 function stopPolling() {
     clearTimeout(state.pollTimer);
     state.pollTimer = null;
@@ -235,7 +245,7 @@ function stopPolling() {
     state.refreshController?.abort();
     state.refreshController = null;
 }
-
+// set a timeout to poll
 function scheduleNextPoll(deviceId, requestVersion) {
     if (
         document.hidden ||
@@ -248,6 +258,7 @@ function scheduleNextPoll(deviceId, requestVersion) {
     state.pollTimer = setTimeout(() => refreshVehicleState(true), POLL_DELAY_MS);
 }
 
+// poll the vehicle state for live updates
 async function refreshVehicleState(announceFailure) {
     if (!state.vehicle || document.hidden) {
         return;
@@ -293,10 +304,12 @@ async function refreshVehicleState(announceFailure) {
     }
 }
 
+// helper to validate battery value (should be already validated but double check)
 function validBattery(value) {
     return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
+// parse the date into JS date 
 function telemetryDate(value) {
     if (typeof value !== "string") {
         return null;
@@ -306,6 +319,7 @@ function telemetryDate(value) {
     return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
+// convert UTC to browser localtime
 function toLocalTimeValue(value) {
     const date = telemetryDate(value);
     if (!date) {
@@ -316,6 +330,7 @@ function toLocalTimeValue(value) {
     return local.toISOString().slice(11, 16);
 }
 
+// convert selected time to the next time that time will with JS Date
 function nextStartTime(value, now = new Date()) {
     const [hours, minutes] = value.split(":").map(Number);
     const start = new Date(now);
@@ -328,6 +343,7 @@ function nextStartTime(value, now = new Date()) {
     return start;
 }
 
+// On state update, re-render the new states
 function renderSnapshot() {
     const snapshot = state.snapshot;
     const batteryKnown = validBattery(snapshot?.batteryPercentage);
@@ -405,6 +421,7 @@ function renderSnapshot() {
     }
 }
 
+// set the charging state and call the API
 async function setCharging() {
     if (typeof state.snapshot?.isCharging !== "boolean" || state.commandPending) {
         return;
@@ -430,6 +447,7 @@ async function setCharging() {
         if (state.vehicle?.deviceId === deviceId) {
             state.snapshot = { ...state.snapshot, isCharging: charging };
         }
+        // once we are sure the api request succeeded, we client side update the message
         resultMessage = charging ? "Charging started." : "Charging stopped.";
     } catch (error) {
         resultMessage = error.message;
@@ -443,8 +461,9 @@ async function setCharging() {
     }
 }
 
+// save the schedule the user has set
 async function saveSchedule(event) {
-    event.preventDefault();
+    event.preventDefault(); // dont make the page reload on submit
     if (!state.vehicle || state.schedulePending) {
         return;
     }
@@ -452,6 +471,7 @@ async function saveSchedule(event) {
     const enabled = elements.scheduleEnabled.checked;
     const payload = { scheduleEnabled: enabled };
 
+    // if the state is enabled we can go ahead and parse the time, and convert it to UTC
     if (enabled) {
         const start = nextStartTime(elements.scheduleTime.value);
         if (!elements.scheduleTime.value || !Number.isFinite(start.getTime())) {
@@ -465,7 +485,7 @@ async function saveSchedule(event) {
     state.schedulePending = true;
     renderSnapshot();
     setStatus("Saving schedule...");
-
+    // call the API now
     try {
         await api(
             `/vehicles/${encodeURIComponent(state.vehicle.deviceId)}/charging-schedule`,
@@ -493,22 +513,25 @@ async function saveSchedule(event) {
     }
 }
 
+// go back to selecting users
 function showUserPicker() {
     stopPolling();
     state.user = null;
     state.vehicle = null;
     state.snapshot = null;
-    loadUsers("backward");
+    loadUsers();
 }
 
+// go back to selecting vehicles
 function showVehiclePicker() {
     stopPolling();
     state.vehicle = null;
     state.snapshot = null;
     state.scheduleDirty = false;
-    loadVehicles("backward");
+    loadVehicles();
 }
 
+// Add event listeners to elements
 elements.chargingButton.addEventListener("click", setCharging);
 elements.scheduleForm.addEventListener("submit", saveSchedule);
 elements.scheduleEnabled.addEventListener("change", () => {
@@ -530,4 +553,5 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
+// load users on load
 loadUsers();

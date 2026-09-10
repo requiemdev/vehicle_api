@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend_API.Controllers;
 
+// unauthenticated endpoint to retrieve users
 [ApiController]
 [AllowAnonymous]
 [Route("users")]
@@ -13,6 +14,7 @@ public sealed class UsersController(VehicleDbContext dbContext) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
+        // refactor into repo
         var users = await dbContext.Users
             .AsNoTracking()
             .OrderBy(user => user.DisplayName)

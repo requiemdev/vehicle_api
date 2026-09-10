@@ -570,33 +570,6 @@ h3 {
 #schedule-status[data-state="applied"] { color: var(--green); }
 #schedule-status[data-state="rejected"] { color: var(--red); }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-    animation-duration: 320ms;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html[data-navigation-direction="forward"]::view-transition-old(root) { animation-name: step-out-forward; }
-html[data-navigation-direction="forward"]::view-transition-new(root) { animation-name: step-in-forward; }
-html[data-navigation-direction="backward"]::view-transition-old(root) { animation-name: step-out-backward; }
-html[data-navigation-direction="backward"]::view-transition-new(root) { animation-name: step-in-backward; }
-
-@keyframes step-out-forward {
-    to { opacity: 0; transform: translateX(-1.125rem); }
-}
-
-@keyframes step-in-forward {
-    from { opacity: 0; transform: translateX(1.125rem); }
-}
-
-@keyframes step-out-backward {
-    to { opacity: 0; transform: translateX(1.125rem); }
-}
-
-@keyframes step-in-backward {
-    from { opacity: 0; transform: translateX(-1.125rem); }
-}
-
 @media (hover: hover) {
     .options > button:hover, .option-button:hover {
         transform: translateY(-0.25rem);
@@ -695,25 +668,6 @@ html[data-navigation-direction="backward"]::view-transition-new(root) { animatio
         transform: none;
     }
 
-    ::view-transition-old(root) {
-        animation-duration: 120ms !important;
-        animation-name: reduced-fade-out !important;
-    }
-
-    ::view-transition-new(root) {
-        animation-duration: 120ms !important;
-        animation-name: reduced-fade-in !important;
-    }
-}
-
-@keyframes reduced-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes reduced-fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
 }
 
 @media (prefers-reduced-transparency: reduce) {

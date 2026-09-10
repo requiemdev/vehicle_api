@@ -237,14 +237,26 @@ function telemetryDate(value) {
     return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
-function toLocalDateTimeValue(value) {
+function toLocalTimeValue(value) {
     const date = telemetryDate(value);
     if (!date) {
         return "";
     }
 
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+    return local.toISOString().slice(11, 16);
+}
+
+function nextStartTime(value, now = new Date()) {
+    const [hours, minutes] = value.split(":").map(Number);
+    const start = new Date(now);
+    start.setHours(hours, minutes, 0, 0);
+
+    if (start <= now) {
+        start.setDate(start.getDate() + 1);
+    }
+
+    return start;
 }
 
 function renderSnapshot() {
@@ -278,7 +290,7 @@ function renderSnapshot() {
         elements.scheduleTime.value = "";
     } else if (!state.scheduleDirty && !state.schedulePending) {
         elements.scheduleEnabled.checked = snapshot.scheduleEnabled === true;
-        elements.scheduleTime.value = toLocalDateTimeValue(snapshot.chargingStartUtc);
+        elements.scheduleTime.value = toLocalTimeValue(snapshot.chargingStartUtc);
     }
 
     elements.scheduleTime.disabled = !elements.scheduleEnabled.checked || state.schedulePending;
@@ -339,9 +351,9 @@ async function saveSchedule(event) {
     const payload = { scheduleEnabled: enabled };
 
     if (enabled) {
-        const start = new Date(elements.scheduleTime.value);
-        if (!elements.scheduleTime.value || !Number.isFinite(start.getTime()) || start.getTime() <= Date.now()) {
-            setStatus("Choose a future start time.");
+        const start = nextStartTime(elements.scheduleTime.value);
+        if (!elements.scheduleTime.value || !Number.isFinite(start.getTime())) {
+            setStatus("Choose a start time.");
             elements.scheduleTime.focus();
             return;
         }

@@ -29,6 +29,7 @@ const elements = {
     batteryLevel: document.querySelector("#battery-level"),
     batteryArc: document.querySelector("#battery-arc"),
     batteryText: document.querySelector("#battery-text"),
+    chargingIndicator: document.querySelector("#charging-indicator"),
     chargingState: document.querySelector("#charging-state"),
     telemetryTime: document.querySelector("#telemetry-time"),
     chargingButton: document.querySelector("#charging-button"),
@@ -340,6 +341,11 @@ function renderSnapshot() {
         : batteryValue > 50 ? "high" : batteryValue >= 20 ? "medium" : "low";
     elements.batteryLevel.style.setProperty("--battery-value", batteryValue);
     elements.batteryLevel.dataset.level = batteryState;
+    const chargingState = !chargingKnown
+        ? "unavailable"
+        : snapshot.isCharging ? "charging" : "not-charging";
+    elements.batteryLevel.dataset.charging = chargingState;
+    elements.chargingIndicator.dataset.charging = chargingState;
     elements.batteryArc.style.strokeDashoffset = String(100 - batteryValue);
     if (batteryKnown) {
         elements.batteryLevel.setAttribute("aria-valuenow", String(batteryValue));
@@ -355,11 +361,20 @@ function renderSnapshot() {
         ? snapshot.isCharging ? "Charging." : "Not charging."
         : "Charging state unavailable.";
     elements.telemetryTime.textContent = telemetryFresh
-        ? `Last update: ${timestamp.toLocaleString()}`
+        ? `${timestamp.toLocaleString()}`
         : "No recent data.";
-    elements.chargingButton.textContent = state.commandPending
-        ? snapshot.isCharging ? "Stopping charging…" : "Starting charging…"
-        : chargingKnown && snapshot.isCharging ? "Stop charging" : "Start charging";
+    elements.chargingButton.textContent = !chargingKnown
+        ? "—"
+        : state.commandPending
+            ? snapshot.isCharging ? "Stopping…" : "Starting…"
+            : snapshot.isCharging ? "Stop" : "Start";
+    elements.chargingButton.setAttribute(
+        "aria-label",
+        !chargingKnown
+            ? "Charging control unavailable"
+            : state.commandPending
+                ? snapshot.isCharging ? "Stopping charging" : "Starting charging"
+                : snapshot.isCharging ? "Stop charging" : "Start charging");
     elements.chargingButton.disabled = !chargingKnown || state.commandPending;
 
     if (!snapshot) {
@@ -395,32 +410,36 @@ async function setCharging() {
         return;
     }
 
+    const deviceId = state.vehicle.deviceId;
     const charging = !state.snapshot.isCharging;
+    stopPolling();
     state.commandPending = true;
     renderSnapshot();
     setStatus(charging ? "Starting charging..." : "Stopping charging...");
     let resultMessage;
 
     try {
-        const response = await api(
-            `/vehicles/${encodeURIComponent(state.vehicle.deviceId)}/charging`,
+        await api(
+            `/vehicles/${encodeURIComponent(deviceId)}/charging`,
             {
                 method: "PUT",
                 body: JSON.stringify({ charging })
             }
         );
 
-        if (typeof response?.isCharging === "boolean") {
-            state.snapshot = { ...state.snapshot, isCharging: response.isCharging };
+        if (state.vehicle?.deviceId === deviceId) {
+            state.snapshot = { ...state.snapshot, isCharging: charging };
         }
         resultMessage = charging ? "Charging started." : "Charging stopped.";
     } catch (error) {
         resultMessage = error.message;
     } finally {
         state.commandPending = false;
-        renderSnapshot();
-        await refreshVehicleState(false);
-        setStatus(resultMessage);
+        if (state.vehicle?.deviceId === deviceId) {
+            renderSnapshot();
+            scheduleNextPoll(deviceId, state.refreshVersion);
+            setStatus(resultMessage);
+        }
     }
 }
 

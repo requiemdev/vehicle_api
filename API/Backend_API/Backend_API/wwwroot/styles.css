@@ -3,7 +3,6 @@
     font: 100%/1.5 system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     font-optical-sizing: auto;
     --background: #f5f5f7;
-    --background-wash: rgba(0, 113, 227, 0.08);
     --surface: rgba(255, 255, 255, 0.78);
     --surface-solid: #ffffff;
     --surface-subtle: #f2f2f7;
@@ -30,7 +29,7 @@ body {
     min-height: 100svh;
     margin: 0;
     color: var(--text);
-    background: radial-gradient(circle at 50% -10%, var(--background-wash), transparent 38rem), var(--background);
+    background: var(--background);
 }
 
 button, input { font: inherit; }
@@ -239,7 +238,7 @@ h3 {
     font-weight: 700;
 }
 
-#vehicle-user-name, #dashboard-user-name { overflow-wrap: anywhere; }
+#vehicle-user-name, #dashboard-user-name { overflow-wrap: anywhere; padding: 1rem}
 
 .text-button, .secondary-button {
     padding: 0.625rem 1rem;
@@ -348,6 +347,22 @@ h3 {
 .battery-gauge[data-level="low"] { color: var(--red); }
 .battery-gauge[data-level="unavailable"] { color: var(--secondary-text); }
 
+.charging-indicator {
+    flex: 0 0 auto;
+    display: block;
+    width: clamp(3.5rem, 8vw, 5rem);
+    height: clamp(3.5rem, 8vw, 5rem);
+    margin-block: 0.25rem 0.5rem;
+    color: var(--secondary-text);
+    fill: currentColor;
+    filter: drop-shadow(0 0 0.35rem color-mix(in srgb, currentColor 32%, transparent));
+    transition: color 240ms ease, filter 240ms ease;
+}
+
+.charging-indicator[data-charging="charging"] {
+    color: var(--green);
+}
+
 .battery-value, .battery-label {
     position: absolute;
     inset-inline: 0;
@@ -428,6 +443,22 @@ h3 {
 }
 
 .primary-button:hover:not(:disabled) { background: var(--blue-pressed); }
+
+.charging-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.charging-button {
+    width: clamp(8rem, 16vw, 10rem);
+    min-height: 0;
+    aspect-ratio: 1;
+    padding: 1rem;
+    border-radius: 50%;
+    text-align: center;
+    text-wrap: balance;
+}
 
 .schedule-fields {
     display: grid;
@@ -632,7 +663,6 @@ html[data-navigation-direction="backward"]::view-transition-new(root) { animatio
 @media (prefers-color-scheme: dark) {
     :root {
         --background: #000000;
-        --background-wash: rgba(10, 132, 255, 0.12);
         --surface: rgba(28, 28, 30, 0.78);
         --surface-solid: #1c1c1e;
         --surface-subtle: #2c2c2e;

@@ -15,9 +15,6 @@
 
         <section id="user-section" class="step selection-step" aria-labelledby="user-heading">
             <div class="selection-content">
-                <p class="eyebrow">Vehicle Charging</p>
-                <h2 id="user-heading" tabindex="-1">Who’s driving?</h2>
-                <p class="supporting-copy">Choose your profile to continue.</p>
                 <div id="user-options" class="options user-options"></div>
                 <div class="status-slot">
                     <p id="status" role="status" aria-live="polite"></p>
@@ -35,9 +32,6 @@
             </div>
 
             <div class="selection-content">
-                <p class="eyebrow">Your Garage</p>
-                <h2 id="vehicle-heading" tabindex="-1">Choose a vehicle</h2>
-                <p class="supporting-copy">Select the vehicle you want to manage.</p>
                 <div id="vehicle-options" class="options vehicle-options"></div>
                 <div class="status-slot"></div>
             </div>
@@ -46,7 +40,6 @@
         <section id="dashboard-section" class="step dashboard-step" aria-labelledby="vehicle-name" hidden>
             <nav class="floating-nav dashboard-nav" aria-label="Vehicle dashboard navigation">
                 <div class="dashboard-context">
-                    <span class="context-label">Controlling</span>
                     <strong id="dashboard-user-name">User</strong>
                 </div>
                 <div class="nav-actions">
@@ -58,15 +51,18 @@
             <div class="dashboard-shell">
                 <div class="vehicle-summary">
                     <header class="vehicle-heading-group">
-                        <p class="eyebrow">Vehicle Overview</p>
                         <h2 id="vehicle-name" tabindex="-1">Vehicle</h2>
                     </header>
 
                     <img class="dashboard-vehicle-image" src="/vehicle.svg" alt="">
 
+                    <svg id="charging-indicator" class="charging-indicator" data-charging="unavailable" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M13.1 1.5 3.5 13h6.7l-1.3 9.5L18.5 11h-6.6l1.2-9.5Z"></path>
+                    </svg>
+
                     <div id="battery-level" class="battery-gauge" role="meter"
                          aria-label="Battery level" aria-valuemin="0" aria-valuemax="100"
-                         aria-valuetext="Battery level unavailable" data-level="unavailable">
+                         aria-valuetext="Battery level unavailable" data-level="unavailable" data-charging="unavailable">
                         <svg class="battery-gauge-art" viewBox="0 0 240 132" aria-hidden="true">
                             <path class="battery-track" pathLength="100" d="M 24 116 A 96 96 0 0 1 216 116"></path>
                             <path id="battery-arc" class="battery-arc" pathLength="100" d="M 24 116 A 96 96 0 0 1 216 116"></path>
@@ -79,20 +75,14 @@
                 <div class="controls-column">
                     <section class="control-card charging-card" aria-labelledby="charging-heading">
                         <div class="card-heading-row">
-                            <div>
-                                <p class="section-kicker">Charging</p>
-                                <h3 id="charging-heading">Charge control</h3>
-                            </div>
-                            <span class="status-dot" aria-hidden="true"></span>
+
                         </div>
-                        <p class="card-description">Start or stop charging immediately.</p>
-                        <button id="charging-button" class="primary-button" type="button" disabled>Start charging</button>
+                        <button id="charging-button" class="primary-button charging-button" type="button" aria-label="Start charging" disabled>Start</button>
                     </section>
 
                     <form id="schedule-form" class="control-card schedule-card">
                         <div class="card-heading-row">
                             <div>
-                                <p class="section-kicker">Automation</p>
                                 <h3>Charging schedule</h3>
                             </div>
                             <label class="switch" for="schedule-enabled">
@@ -113,7 +103,6 @@
 
                     <section class="control-card information-card" aria-labelledby="information-heading">
                         <div>
-                            <p class="section-kicker">Live status</p>
                             <h3 id="information-heading">Information</h3>
                         </div>
                         <dl class="information-list">

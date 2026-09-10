@@ -3,59 +3,127 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
     <title>Vehicle Charging</title>
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
 </head>
 <body>
     <main>
-        <h1>Vehicle charging</h1>
+        <h1 class="visually-hidden">Vehicle charging</h1>
 
-        <section id="user-section" aria-labelledby="user-heading">
-            <h2 id="user-heading">Choose a user</h2>
-            <div id="user-options" class="options"></div>
-        </section>
-
-        <section id="vehicle-section" aria-labelledby="vehicle-heading" hidden>
-            <h2 id="vehicle-heading">Choose a vehicle</h2>
-            <div id="vehicle-options" class="options"></div>
-            <button id="change-user" type="button">Change user</button>
-        </section>
-
-        <section id="dashboard-section" aria-labelledby="vehicle-name" hidden>
-            <h2 id="vehicle-name">Vehicle</h2>
-
-            <div class="field">
-                <label for="battery-level">Battery</label>
-                <progress id="battery-level" max="100" value="0"></progress>
-                <span id="battery-text">No recent data.</span>
-            </div>
-
-            <p id="charging-state">Charging state unavailable.</p>
-            <p id="telemetry-time">No recent data.</p>
-            <button id="charging-button" type="button" disabled>Start charging</button>
-
-            <form id="schedule-form">
-                <h3>Charging schedule</h3>
-                <label class="checkbox-label">
-                    <input id="schedule-enabled" type="checkbox">
-                    Enable schedule
-                </label>
-                <div class="field">
-                    <label for="schedule-time">Next charging start time</label>
-                    <input id="schedule-time" type="time" disabled>
+        <section id="user-section" class="step selection-step" aria-labelledby="user-heading">
+            <div class="selection-content">
+                <div id="user-options" class="options user-options"></div>
+                <div class="status-slot">
+                    <p id="status" role="status" aria-live="polite"></p>
                 </div>
-                <button id="save-schedule" type="submit">Save schedule</button>
-                <p id="schedule-status">Schedule status unavailable.</p>
-            </form>
-
-            <div class="actions">
-                <button id="change-vehicle" type="button">Change vehicle</button>
-                <button id="dashboard-change-user" type="button">Change user</button>
             </div>
         </section>
 
-        <p id="status" role="status" aria-live="polite"></p>
+        <section id="vehicle-section" class="step selection-step" aria-labelledby="vehicle-heading" hidden>
+            <div class="floating-nav selection-nav" aria-label="Vehicle selection navigation">
+                <div class="identity-chip">
+                    <span id="vehicle-user-avatar" class="mini-avatar" aria-hidden="true">U</span>
+                    <span id="vehicle-user-name">User</span>
+                </div>
+                <button id="change-user" class="text-button" type="button">Change user</button>
+            </div>
+
+            <div class="selection-content">
+                <div id="vehicle-options" class="options vehicle-options"></div>
+                <div class="status-slot"></div>
+            </div>
+        </section>
+
+        <section id="dashboard-section" class="step dashboard-step" aria-labelledby="vehicle-name" hidden>
+            <nav class="floating-nav dashboard-nav" aria-label="Vehicle dashboard navigation">
+                <div class="dashboard-context">
+                    <strong id="dashboard-user-name">User</strong>
+                </div>
+                <div class="nav-actions">
+                    <button id="change-vehicle" class="text-button" type="button">Change vehicle</button>
+                    <button id="dashboard-change-user" class="text-button" type="button">Change user</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-shell">
+                <div class="vehicle-summary">
+                    <header class="vehicle-heading-group">
+                        <h2 id="vehicle-name" tabindex="-1">Vehicle</h2>
+                    </header>
+
+                    <img class="dashboard-vehicle-image" src="/vehicle.svg" alt="">
+
+                    <svg id="charging-indicator" class="charging-indicator" data-charging="unavailable" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M13.1 1.5 3.5 13h6.7l-1.3 9.5L18.5 11h-6.6l1.2-9.5Z"></path>
+                    </svg>
+
+                    <div id="battery-level" class="battery-gauge" role="meter"
+                         aria-label="Battery level" aria-valuemin="0" aria-valuemax="100"
+                         aria-valuetext="Battery level unavailable" data-level="unavailable" data-charging="unavailable">
+                        <svg class="battery-gauge-art" viewBox="0 0 240 132" aria-hidden="true">
+                            <path class="battery-track" pathLength="100" d="M 24 116 A 96 96 0 0 1 216 116"></path>
+                            <path id="battery-arc" class="battery-arc" pathLength="100" d="M 24 116 A 96 96 0 0 1 216 116"></path>
+                        </svg>
+                        <span id="battery-text" class="battery-value">—</span>
+                        <span class="battery-label">Battery</span>
+                    </div>
+                </div>
+
+                <div class="controls-column">
+                    <section class="control-card charging-card" aria-labelledby="charging-heading">
+                        <div class="card-heading-row">
+
+                        </div>
+                        <button id="charging-button" class="primary-button charging-button" type="button" aria-label="Start charging" disabled>Start</button>
+                    </section>
+
+                    <form id="schedule-form" class="control-card schedule-card">
+                        <div class="card-heading-row">
+                            <div>
+                                <h3>Charging schedule</h3>
+                            </div>
+                            <label class="switch" for="schedule-enabled">
+                                <span class="visually-hidden">Enable schedule</span>
+                                <input id="schedule-enabled" type="checkbox" disabled>
+                                <span class="switch-track" aria-hidden="true"></span>
+                            </label>
+                        </div>
+
+                        <div class="schedule-fields">
+                            <label class="time-field" for="schedule-time">
+                                <span>Next start</span>
+                                <input id="schedule-time" type="time" disabled>
+                            </label>
+                            <button id="save-schedule" class="secondary-button" type="submit" disabled>Save schedule</button>
+                        </div>
+                    </form>
+
+                    <section class="control-card information-card" aria-labelledby="information-heading">
+                        <div>
+                            <h3 id="information-heading">Information</h3>
+                        </div>
+                        <dl class="information-list">
+                            <div>
+                                <dt>Charging</dt>
+                                <dd id="charging-state">Charging state unavailable.</dd>
+                            </div>
+                            <div>
+                                <dt>Last update</dt>
+                                <dd id="telemetry-time">No recent data.</dd>
+                            </div>
+                            <div>
+                                <dt>Schedule</dt>
+                                <dd id="schedule-status" data-state="unavailable">Schedule status unavailable.</dd>
+                            </div>
+                        </dl>
+                        <div class="status-slot"></div>
+                    </section>
+                </div>
+            </div>
+        </section>
     </main>
 </body>
 </html>

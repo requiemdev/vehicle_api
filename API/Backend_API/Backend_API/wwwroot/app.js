@@ -2,6 +2,9 @@
 
 const POLL_DELAY_MS = 15_000;
 const STALE_AFTER_MS = 45_000;
+// add retries for querying users - this is because the functions and db are on demand, so it takes time for them to turn on
+const USER_LOAD_ATTEMPTS = 4;
+const USER_LOAD_RETRY_DELAY_MS = 2_000;
 // local user state
 const state = {
     user: null,
@@ -167,21 +170,29 @@ async function loadUsers() {
     elements.userOptions.replaceChildren();
     setStatus("Loading users...");
 
-    try {
-        const users = await api("/users");
+    for (let attempt = 1; attempt <= USER_LOAD_ATTEMPTS; attempt++) {
+        try {
+            const users = await api("/users");
 
-        if (!Array.isArray(users) || users.length === 0) {
-            setStatus("No users are available.");
+            if (!Array.isArray(users) || users.length === 0) {
+                setStatus("No users are available.");
+                return;
+            }
+
+            for (const user of users) {
+                elements.userOptions.append(createUserButton(user));
+            }
+
+            setStatus("Choose a user.");
             return;
-        }
+        } catch (error) {
+            if (attempt === USER_LOAD_ATTEMPTS) {
+                setStatus(error.message);
+                return;
+            }
 
-        for (const user of users) {
-            elements.userOptions.append(createUserButton(user));
+            await new Promise((resolve) => setTimeout(resolve, USER_LOAD_RETRY_DELAY_MS));
         }
-
-        setStatus("Choose a user.");
-    } catch (error) {
-        setStatus(error.message);
     }
 }
 

@@ -2,11 +2,10 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Backend_API.Data;
 using Backend_API.Dto;
+using Backend_API.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Backend_API.Controllers;
 
@@ -16,7 +15,7 @@ namespace Backend_API.Controllers;
 public sealed class VehicleController(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
-    VehicleDbContext dbContext) : ControllerBase
+    IVehicleRepository vehicleRepository) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetVehicles(CancellationToken cancellationToken)
@@ -25,18 +24,7 @@ public sealed class VehicleController(
         {
             return VehicleAccessDenied();
         }
-        // refactor into repo
-        var vehicles = await dbContext.Vehicles
-            .AsNoTracking()
-            .Where(vehicle => vehicle.OwnerId == userId)
-            .OrderBy(vehicle => vehicle.DisplayName)
-            .ThenBy(vehicle => vehicle.DeviceId)
-            .Select(vehicle => new
-            {
-                vehicle.DeviceId,
-                vehicle.DisplayName
-            })
-            .ToListAsync(cancellationToken);
+        var vehicles = await vehicleRepository.GetByOwnerAsync(userId, cancellationToken);
 
         return Ok(vehicles);
     }
@@ -222,7 +210,7 @@ public sealed class VehicleController(
         }
     }
 
-    // Check the vehicle, can be refactored into repo
+    // Check that the authenticated user owns the vehicle.
     private async Task<bool> OwnsVehicleAsync(
         string deviceId, CancellationToken cancellationToken)
     {
@@ -231,11 +219,7 @@ public sealed class VehicleController(
             return false;
         }
 
-        return await dbContext.Vehicles
-            .AsNoTracking()
-            .AnyAsync(
-                vehicle => vehicle.DeviceId == deviceId && vehicle.OwnerId == userId,
-                cancellationToken);
+        return await vehicleRepository.IsOwnedByAsync(deviceId, userId, cancellationToken);
     }
 
     // Retrieve user ID from the Claims assigned to user

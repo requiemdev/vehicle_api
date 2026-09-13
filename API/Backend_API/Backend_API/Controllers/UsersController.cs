@@ -1,7 +1,6 @@
-using Backend_API.Data;
+using Backend_API.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Backend_API.Controllers;
 
@@ -9,22 +8,12 @@ namespace Backend_API.Controllers;
 [ApiController]
 [AllowAnonymous]
 [Route("users")]
-public sealed class UsersController(VehicleDbContext dbContext) : ControllerBase
+public sealed class UsersController(IUserRepository userRepository) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
-        // refactor into repo
-        var users = await dbContext.Users
-            .AsNoTracking()
-            .OrderBy(user => user.DisplayName)
-            .ThenBy(user => user.Id)
-            .Select(user => new
-            {
-                user.Id,
-                user.DisplayName
-            })
-            .ToListAsync(cancellationToken);
+        var users = await userRepository.GetAllAsync(cancellationToken);
 
         return Ok(users);
     }

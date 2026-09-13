@@ -1,5 +1,6 @@
 using Backend_API.Authentication;
 using Backend_API.Data;
+using Backend_API.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,8 @@ var connectionString = builder.Configuration.GetConnectionString("VehicleDatabas
 // Add services to the container.
 builder.Services.AddDbContext<VehicleDbContext>(options =>
     options.UseSqlServer(connectionString));
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 // Register Controllers
 builder.Services.AddControllers();
 

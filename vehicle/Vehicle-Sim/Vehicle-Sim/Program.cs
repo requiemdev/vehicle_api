@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
+using Spectre.Console;
 
 // Device ID as configured on Azure IoT Hub
 var deviceId = Environment.GetEnvironmentVariable("DEVICE_ID") ?? "sim-car-001";
@@ -30,7 +31,9 @@ Console.CancelKeyPress += (_, eventArgs) =>
 // On Hub connected
 client.SetConnectionStatusChangesHandler((status, reason) =>
 {
-    Console.WriteLine($"IoT Hub connection: {status} ({reason})");
+    var color = status == ConnectionStatus.Connected ? "green" : "yellow";
+    AnsiConsole.MarkupLine(
+        $"[grey]{DateTime.Now:HH:mm:ss}[/] [{color}]CONNECTION[/] {status} [grey]({reason})[/]");
 });
 
 try
@@ -57,8 +60,9 @@ try
         twinState);
 
     // On device connected
-    Console.WriteLine($"Connected as {deviceId}");
-    Console.WriteLine("Press Ctrl+C to stop.");
+    AnsiConsole.MarkupLine(
+        $"[green bold]READY[/] Connected as [cyan]{Markup.Escape(deviceId)}[/]");
+    AnsiConsole.MarkupLine("[grey]Press Ctrl+C to stop.[/]");
 
     var batteryPercent = 64;
 
@@ -121,7 +125,19 @@ try
             .ToString("O", CultureInfo.InvariantCulture);
         await client.UpdateReportedPropertiesAsync(reportedState);
 
-        Console.WriteLine($"Sent: {json}");
+        var batteryColor = telemetry.batteryPercentage <= 20 ? "red" :
+            telemetry.batteryPercentage <= 40 ? "yellow" : "green";
+        var chargingText = telemetry.isCharging
+            ? "[green]CHARGING[/]"
+            : "[grey]DISCHARGING[/]";
+        var scheduledStart = telemetry.chargingStartUtc?.ToLocalTime()
+            .ToString("dd MMM HH:mm", CultureInfo.InvariantCulture) ?? "immediate";
+
+        AnsiConsole.MarkupLine(
+            $"[grey]{telemetry.timestampUtc.ToLocalTime():HH:mm:ss}[/] " +
+            $"[blue]TELEMETRY[/] [{batteryColor} bold]{telemetry.batteryPercentage,3}%[/] " +
+            $"{chargingText} [grey]rev[/] {telemetry.scheduleRevisionApplied} " +
+            $"[grey]start[/] {scheduledStart}");
 
         // Simulate the increase/descrease of battery
         batteryPercent = Math.Clamp(
@@ -162,7 +178,10 @@ static Task<MethodResponse> SetChargingAsync(MethodRequest request, TwinState st
             state.ChargingOverride = isCharging;
         }
 
-        Console.WriteLine($"Direct charging command applied: isCharging={isCharging}");
+        var chargingText = isCharging ? "enabled" : "disabled";
+        AnsiConsole.MarkupLine(
+            $"[grey]{DateTime.Now:HH:mm:ss}[/] [magenta]COMMAND[/] Charging override " +
+            $"[bold]{chargingText}[/]");
         return Task.FromResult(new MethodResponse(
             Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { isCharging })),
             200));
@@ -269,10 +288,12 @@ static async Task ApplyDesiredPropertiesAsync(
         // update IoT hub with our reported properties
         await client.UpdateReportedPropertiesAsync(reportedProperties);
 
-        Console.WriteLine(
-            $"Applied twin config: enabled={chargingScheduleEnabled}, " +
-            $"start={chargingStartUtc?.ToUniversalTime():O}, " +
-            $"revision={scheduleRevision}");
+        var start = chargingStartUtc?.ToLocalTime()
+            .ToString("dd MMM yyyy HH:mm", CultureInfo.InvariantCulture) ?? "immediate";
+        AnsiConsole.MarkupLine(
+            $"[grey]{DateTime.Now:HH:mm:ss}[/] [cyan]CONFIG[/] " +
+            $"Schedule [bold]{(chargingScheduleEnabled ? "enabled" : "disabled")}[/], " +
+            $"start {start}, revision {scheduleRevision}");
     }
     catch (Exception exception) when (exception is FormatException or
         InvalidCastException or
@@ -286,7 +307,9 @@ static async Task ApplyDesiredPropertiesAsync(
 
         await client.UpdateReportedPropertiesAsync(reportedProperties);
 
-        Console.WriteLine($"Rejected twin config: {exception.Message}");
+        AnsiConsole.MarkupLine(
+            $"[grey]{DateTime.Now:HH:mm:ss}[/] [red bold]CONFIG REJECTED[/] " +
+            Markup.Escape(exception.Message));
     }
 }
 

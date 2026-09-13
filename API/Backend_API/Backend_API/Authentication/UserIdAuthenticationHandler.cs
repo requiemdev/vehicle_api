@@ -1,9 +1,8 @@
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using Backend_API.Data;
+using Backend_API.Repositories;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Backend_API.Authentication;
@@ -11,7 +10,7 @@ public sealed class UserIdAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    VehicleDbContext dbContext)
+    IUserRepository userRepository)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "UserId";
@@ -32,10 +31,7 @@ public sealed class UserIdAuthenticationHandler(
             return AuthenticateResult.Fail($"{HeaderName} must contain one positive integer.");
         }
 
-        //refactor into repo
-        var user = await dbContext.Users
-            .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == userId, Context.RequestAborted);
+        var user = await userRepository.FindAsync(userId, Context.RequestAborted);
 
         if (user is null)
         {

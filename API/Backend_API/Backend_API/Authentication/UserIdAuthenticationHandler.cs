@@ -31,6 +31,8 @@ public sealed class UserIdAuthenticationHandler(
             return AuthenticateResult.Fail($"{HeaderName} must contain one positive integer.");
         }
 
+        // Retrieve the user
+
         var user = await userRepository.FindAsync(userId, Context.RequestAborted);
 
         if (user is null)

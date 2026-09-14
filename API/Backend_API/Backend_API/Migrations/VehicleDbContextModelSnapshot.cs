@@ -60,17 +60,12 @@ namespace Backend_API.Migrations
             modelBuilder.Entity("Backend_API.Model.Vehicle", b =>
                 {
                     b.HasOne("Backend_API.Model.User", "Owner")
-                        .WithMany("Vehicles")
+                        .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("Backend_API.Model.User", b =>
-                {
-                    b.Navigation("Vehicles");
                 });
 #pragma warning restore 612, 618
         }

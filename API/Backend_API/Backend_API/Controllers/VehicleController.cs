@@ -34,6 +34,7 @@ public sealed class VehicleController(
     public async Task<IActionResult> GetVehicleState(
         string deviceId, CancellationToken cancellationToken)
     {
+        // we dont want to cache the result since we will be polling it constantly
         Response.Headers.CacheControl = "no-store";
 
         if (string.IsNullOrWhiteSpace(deviceId))
@@ -49,7 +50,8 @@ public sealed class VehicleController(
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"devices/{Uri.EscapeDataString(deviceId)}/state");
-
+        
+        // attach the functions key so we can make requests to the Function
         var functionKey = configuration["TelemetryProcessor:FunctionKeys:GetDeviceState"];
         if (!string.IsNullOrWhiteSpace(functionKey))
         {
@@ -126,6 +128,7 @@ public sealed class VehicleController(
             request.Headers.Add("x-functions-key", functionKey);
         }
 
+        // duplicated from before, should refactor 
         try
         {
             using var response = await httpClientFactory

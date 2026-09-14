@@ -7,6 +7,12 @@ Full stack app to simulate the charging controls of an electric vehicle.
 
 The dashboard lets the user select a demo user and one of their vehicles, see the latest battery and charging state, start or stop charging, and set a charging schedule.
 
+
+
+https://github.com/user-attachments/assets/580bd070-1e12-4ddb-8800-ad77e11d5b7a
+
+
+
 ## Architecture
 
 ```text
@@ -20,6 +26,9 @@ Browser dashboard
 SQL Server stores users, vehicles, and maps ownership.
 Device twins hold the latest vehicle state and desired schedule.
 ```
+
+<img width="2182" height="1187" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/b6176e6a-9c00-4bee-89ef-be8cb1f1edf9" />
+
 
 The browser calls the API with `X-User-Id`. The API checks that the user owns the vehicle, then calls the Functions with server-side Function keys. IoT Hub credentials and Function keys are never sent to the browser.
 

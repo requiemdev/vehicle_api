@@ -69,7 +69,7 @@ A vehicle has one owner, and every protected request confirms that the requestin
 | --- | --- | --- |
 | `ProcessTelemetry` | IoT Hub Event Hub trigger | Validates and logs the telemetry from the simulated device. |
 | `GetDeviceState` | `GET /devices/{deviceId}/state` | Reads the device twin and sends it to the dashboard. |
-| `SetCharging` | `POST /devices/{deviceId}/charging` | Invokes the simulated device's `setCharging` direct method to begin or stop charging. |
+| `SetCharging` | `PUT /devices/{deviceId}/charging` | Invokes the simulated device's `setCharging` direct method to begin or stop charging. |
 | `UpdateDesiredProperties` | `PATCH /devices/{deviceId}/desired-properties` | Updates desired schedule properties in the device twin. |
 
 ### Azure IoT Hub and device twin

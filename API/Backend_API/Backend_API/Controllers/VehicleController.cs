@@ -175,7 +175,7 @@ public sealed class VehicleController(
         }
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Post,
+            HttpMethod.Put,
             $"devices/{Uri.EscapeDataString(deviceId)}/charging")
         {
             Content = new StringContent(

@@ -110,23 +110,6 @@ h3 {
     text-align: center;
 }
 
-.eyebrow, .section-kicker, .context-label {
-    margin-block-end: 0.5rem;
-    color: var(--secondary-text);
-    font-size: 0.75rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.supporting-copy {
-    margin: 0 auto;
-    color: var(--secondary-text);
-    font-size: clamp(1rem, 2vw, 1.125rem);
-    line-height: 1.45;
-}
-
 .options {
     display: grid;
     justify-content: center;
@@ -266,11 +249,6 @@ h3 {
     line-height: 1.2;
 }
 
-.context-label {
-    margin: 0;
-    font-size: 0.625rem;
-}
-
 .nav-actions {
     display: flex;
     flex-wrap: wrap;
@@ -406,26 +384,6 @@ h3 {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-}
-
-.section-kicker {
-    margin-block-end: 0.25rem;
-    font-size: 0.625rem;
-}
-
-.status-dot {
-    width: 0.625rem;
-    height: 0.625rem;
-    flex: 0 0 auto;
-    background: var(--secondary-text);
-    border-radius: 50%;
-    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--secondary-text) 12%, transparent);
-}
-
-.card-description {
-    margin-block: 0.75rem 1rem;
-    color: var(--secondary-text);
-    font-size: 0.9375rem;
 }
 
 .primary-button, .secondary-button {
@@ -691,13 +649,8 @@ h3 {
         backdrop-filter: none;
     }
 
-    .supporting-copy,
-    .eyebrow,
-    .section-kicker,
-    .context-label,
     #status,
     .information-list dt,
-    .card-description,
     .time-field {
         color: var(--text);
     }

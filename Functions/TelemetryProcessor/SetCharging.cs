@@ -8,14 +8,14 @@ using Microsoft.Extensions.Logging;
 
 namespace TelemetryProcessor;
 
-// Direct set charging method, invoked by HTTP POST
+// Direct set charging method, invoked by HTTP Put
 public sealed class SetCharging(
     ServiceClient serviceClient,
     ILogger<SetCharging> logger)
 {
     [Function(nameof(SetCharging))]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "devices/{deviceId}/charging")]
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "devices/{deviceId}/charging")]
         HttpRequestData request,
         string deviceId,
         CancellationToken cancellationToken)
